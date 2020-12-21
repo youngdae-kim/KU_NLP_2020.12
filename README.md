@@ -13,9 +13,9 @@
 
 
 ## Profile
- 이름: Kim Youngdae (김영대) <br>
- 소속: 고려대학교 컴퓨터정보통신대학원 디지털금융공학과 <br>
- Email: thebest@korea.ac.kr<br>
+ 이름 : Kim Youngdae (김영대) <br>
+ 소속 : 고려대학교 컴퓨터정보통신대학원 디지털금융공학과 <br>
+ Email : thebest@korea.ac.kr<br>
 
 
 ## 참고자료
