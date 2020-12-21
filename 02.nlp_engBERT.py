@@ -62,7 +62,7 @@ class Model(nn.Module):
   def forward(self, utterance):
     tokens = self.bert_tokenizer.tokenize(utterance)
     tokens = ['[CLS]'] + tokens + ['[SEP]'] # (len)
-    ids = [tokenizer.convert_tokens_to_ids(tokens)] # (bat=1, len)
+    ids = [self.bert_tokenizer.convert_tokens_to_ids(tokens)] # (bat=1, len)
     input_tensor = torch.tensor(ids).cuda()
 
     hidden_tensor = self.bert_model(input_tensor)[0] # (bat, len, hid)
