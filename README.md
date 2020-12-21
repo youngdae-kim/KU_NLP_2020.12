@@ -2,21 +2,25 @@
 고려대학교 컴퓨터정보통신대학원 디지털금융공학과 자연어처리 과제
 
 
-## 한글/영어 감성 분석기 개발 과제
+### 한글/영어 감성 분석기 개발 과제
 #### 1. 한글 감성 분석기
  - 목적 : 네이버 영화 감상평 분석<br>
  - 실행코드 : 01.nlp_korBert.py
  - data Set : data_KOR/ratings_train.txt, ratings_test.txt
  - Usage
+ ``` 
  $ python 01.nlp_korBert.py
-
+ ``` 
+ 
 #### 2. 영어 감성 분석기
  - 목적 : 프렌즈 미드 dialog 감성 분석 <br>
- - 실행코드 : 02.nlp_engBERT.py
-	- data Set : data_ENG/Friends/friends_train.json, friends_test.json
+ - 실행코드 : 02.nlp_engBERT.py <br>
+ - data Set : data_ENG/Friends/friends_train.json, friends_test.json <br>
  - Usage
-	$ python 02.nlp_engBERT.py
-
+ ``` 
+ $ python 02.nlp_engBERT.py
+ ``` 
+ 
 ## Dependencies
  - python 3.8.5
  - tensorflow==2.4.0
