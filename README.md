@@ -6,10 +6,12 @@
 #### 1. 한글 감성 분석기
  - 목적 : 네이버 영화 감상평 분석<br>
  - 실행코드 : 01.nlp_korBert.py
+ - data Set : data_KOR/ratings_train.txt, ratings_test.txt
 
 #### 2. 영어 감성 분석기
  - 목적 : 프렌즈 미드 dialog 감성 분석 <br>
  - 실행코드 : 02.nlp_engBERT.py
+- data Set : data_ENG/Friends/friends_train.json, friends_test.json
 
 
 ## Profile
