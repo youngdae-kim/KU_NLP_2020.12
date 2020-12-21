@@ -8,14 +8,14 @@
  - 실행코드 : 01.nlp_korBert.py
  - data Set : data_KOR/ratings_train.txt, ratings_test.txt
  - Usage
-$ python 01.nlp_korBert.py
+ $ python 01.nlp_korBert.py
 
 #### 2. 영어 감성 분석기
  - 목적 : 프렌즈 미드 dialog 감성 분석 <br>
  - 실행코드 : 02.nlp_engBERT.py
-- data Set : data_ENG/Friends/friends_train.json, friends_test.json
+	- data Set : data_ENG/Friends/friends_train.json, friends_test.json
  - Usage
-$ python 02.nlp_engBERT.py
+	$ python 02.nlp_engBERT.py
 
 ## Dependencies
  - python 3.8.5
