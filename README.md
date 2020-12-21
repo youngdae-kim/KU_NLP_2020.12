@@ -14,6 +14,14 @@
 - data Set : data_ENG/Friends/friends_train.json, friends_test.json
 
 
+## Dependencies
+ - python 3.8.5
+ - tensorflow==2.4.0
+ - keras==2.4.3
+ - pytorch==1.7.1
+ - transformers==4.1.1
+
+
 ## Profile
  이름 : Kim Youngdae (김영대) <br>
  소속 : 고려대학교 컴퓨터정보통신대학원 디지털금융공학과 <br>
