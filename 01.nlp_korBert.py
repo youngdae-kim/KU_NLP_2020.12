@@ -1,38 +1,55 @@
-import tensorflow as tf
-import numpy as np
-import pandas as pd
-from transformers import *
-import json
+import os
+import logging
+import unicodedata
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import os
+import tensorflow as tf
+from transformers import *
+from shutil import copyfile
+import tensorflow_addons as tfa
+from transformers import PreTrainedTokenizer
+from sklearn.metrics import classification_report
 
-###########
-### 1.data set
-###########
-print("1.data set")
+#####################################
+# 0. hypterpameter Setting
+# - 학습에 이용되는 하이퍼파라미터 세팅
+# - pretrained BERT 모델 세팅
+#####################################
+print("0. hypterpameter Setting")
+
+SEQ_LEN = 64
+BATCH_SIZE = 16
+LR = 5.0e-5
+N_EPOCH = 8
+TOTAL_STEPS = 9375 * 8  # 학습건/16 * 8 epoch = 9375 * 8
+MIN_LR = 1e-5
+EPS = 1e-08
+
+
+#####################################
+# 1. train & test data Setting
+# - Train & test 파일에서 학습 가능한 데이터 Set 으로 변환
+#####################################
+print("1. data Set")
+
 data_kor_url = "data_KOR/"
 
-train = pd.read_table(data_kor_url+"ratings_train.txt")
-test = pd.read_table(data_kor_url+"ratings_test.txt")
-# train = pd.read_table(data_kor_url + "ratings_temp.txt")
-# test = pd.read_table(data_kor_url + "ratings_temp.txt")
+train = pd.read_table(data_kor_url + "ratings_train.txt")
+test = pd.read_table(data_kor_url + "ratings_test.txt")
 
 # print(train[50:70])
 
-###########
-### 2.make Input to BERT
-###########
-print("2.make Input to BERT")
 
-import logging
-import unicodedata
-from shutil import copyfile
+#####################################
+# 2. KorBERT Tokenization
+# - SKT에서 만든 KorBERT 활용
+# - huggingface 활용하여 tokenizer 코드 작성
+# - 참고 : https://github.com/monologg/KoBERT-NER
+#####################################
+print("2.KorBERT Tokenization")
 
-# from transformers import PreTrainedTokenizer
-
-logger = logging.getLogger(__name__)
+logger = logging.get_logger(__name__)
 
 VOCAB_FILES_NAMES = {"vocab_file": "tokenizer_78b3253a26.model",
                      "vocab_txt": "vocab.txt"}
@@ -50,16 +67,16 @@ PRETRAINED_VOCAB_FILES_MAP = {
     }
 }
 
-PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
-    "monologg/kobert": 512,
-    "monologg/kobert-lm": 512,
-    "monologg/distilkobert": 512
-}
-
 PRETRAINED_INIT_CONFIGURATION = {
     "monologg/kobert": {"do_lower_case": False},
     "monologg/kobert-lm": {"do_lower_case": False},
     "monologg/distilkobert": {"do_lower_case": False}
+}
+
+PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
+    "monologg/kobert": 512,
+    "monologg/kobert-lm": 512,
+    "monologg/distilkobert": 512
 }
 
 SPIECE_UNDERLINE = u'▁'
@@ -286,31 +303,22 @@ class KoBertTokenizer(PreTrainedTokenizer):
         return out_vocab_model, out_vocab_txt
 
 
-###########
-### 3.import tokenizer
-###########
-print("3.import tokenizer")
-
 tokenizer = KoBertTokenizer.from_pretrained('monologg/kobert')
-
-# print(tokenizer.tokenize("보는내내 그대로 들어맞는 예측 카리스마 없는 악역"))
-# print(tokenizer.encode("보는내내 그대로 들어맞는 예측 카리스마 없는 악역"))
+# print(tokenizer.tokenize("자연어 처리 구현 하는건 정말 어렵네요."))
 
 
-# 마스크 인풋
-valid_num = len(tokenizer.encode("전율을 일으키는 영화. 다시 보고싶은 영화"))
-# print(valid_num * [1] + (64 - valid_num) * [0])
+#####################################
+# 3. data convert to BERT
+# - BERT input : token, mask, segment
+# - BERT input lenth = 64
+#####################################
+print("3. data convert to BERT")
 
-
-###########
-### 4.data load
-###########
-print("4.data load")
 
 def convert_data(data_df):
     global tokenizer
 
-    SEQ_LEN = 64  # SEQ_LEN : 버트에 들어갈 인풋의 길이
+    SEQ_LEN = 64  # SEQ_LEN : BERT에 들어갈 input 길이
 
     tokens, masks, segments, targets = [], [], [], []
 
@@ -325,7 +333,7 @@ def convert_data(data_df):
         # 문장의 전후관계를 구분해주는 세그먼트는 문장이 1개밖에 없으므로 모두 0
         segment = [0] * SEQ_LEN
 
-        # 버트 인풋으로 들어가는 token, mask, segment를 tokens, segments에 각각 저장
+        # BERT input으로 들어가는 token, mask, segment를 tokens, segments에 각각 저장
         tokens.append(token)
         masks.append(mask)
         segments.append(segment)
@@ -342,6 +350,17 @@ def convert_data(data_df):
     return [tokens, masks, segments], targets
 
 
+#####################################
+# 4. data load to training
+#####################################
+print("4. data load to training")
+
+# 긍부정 문장을 포함하고 있는 칼럼
+DATA_COLUMN = "document"
+# 긍정인지 부정인지를 (1=긍정,0=부정) 포함하고 있는 칼럼
+LABEL_COLUMN = "label"
+
+
 # 위에 정의한 convert_data 함수를 불러오는 함수를 정의
 def load_data(pandas_dataframe):
     data_df = pandas_dataframe
@@ -350,30 +369,25 @@ def load_data(pandas_dataframe):
     data_x, data_y = convert_data(data_df)
     return data_x, data_y
 
-
-SEQ_LEN = 64
-BATCH_SIZE = 10
-# 긍부정 문장을 포함하고 있는 칼럼
-DATA_COLUMN = "document"
-# 긍정인지 부정인지를 (1=긍정,0=부정) 포함하고 있는 칼럼
-LABEL_COLUMN = "label"
-
-# train/test 데이터를 버트 인풋에 맞게 변환
+# train/test 데이터를 BERT input에 맞게 변환
 train_x, train_y = load_data(train)
 test_x, test_y = load_data(test)
 
 
-###########
-### 5. sentiment classffier
-###########
-print("5. sentiment classffier")
+#####################################
+# 5. Model & Layer Set
+# - pretrained KorBERT 기반 학습 모델 세팅
+#####################################
+print("5. Model & Layer Set")
 
 model = TFBertModel.from_pretrained("monologg/kobert", from_pt=True)
-# 토큰 인풋, 마스크 인풋, 세그먼트 인풋 정의
+
+# 토큰 input, 마스크 input, 세그먼트 input 정의
 token_inputs = tf.keras.layers.Input((SEQ_LEN,), dtype=tf.int32, name='input_word_ids')
 mask_inputs = tf.keras.layers.Input((SEQ_LEN,), dtype=tf.int32, name='input_masks')
 segment_inputs = tf.keras.layers.Input((SEQ_LEN,), dtype=tf.int32, name='input_segment')
-# 인풋이 [토큰, 마스크, 세그먼트]인 모델 정의
+
+# input이 [토큰, 마스크, 세그먼트]인 모델 정의
 bert_outputs = model([token_inputs, mask_inputs, segment_inputs])
 
 # print(bert_outputs)
@@ -381,31 +395,34 @@ bert_outputs = model([token_inputs, mask_inputs, segment_inputs])
 bert_outputs = bert_outputs[1]
 
 # Rectified Adam 옵티마이저 사용
-import tensorflow_addons as tfa
-# 총 batch size * 4 epoch = 2344 * 4
-opt = tfa.optimizers.RectifiedAdam(lr=5.0e-5, total_steps = 586*16, warmup_proportion=0.1, min_lr=1e-5, epsilon=1e-08, clipnorm=1.0)
+opt = tfa.optimizers.RectifiedAdam(lr=LR, total_steps=TOTAL_STEPS, warmup_proportion=0.1, min_lr=MIN_LR, epsilon=EPS,
+                                   clipnorm=1.0)
 
 sentiment_drop = tf.keras.layers.Dropout(0.5)(bert_outputs)
-sentiment_first = tf.keras.layers.Dense(1, activation='sigmoid', kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))(sentiment_drop)
+sentiment_first = tf.keras.layers.Dense(1, activation='sigmoid',
+                                        kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))(
+    sentiment_drop)
 sentiment_model = tf.keras.Model([token_inputs, mask_inputs, segment_inputs], sentiment_first)
-sentiment_model.compile(optimizer=opt, loss=tf.keras.losses.BinaryCrossentropy(), metrics = ['accuracy'])
+sentiment_model.compile(optimizer=opt, loss=tf.keras.losses.BinaryCrossentropy(), metrics=['accuracy'])
 
 # print(sentiment_model.summary())
 
-###########
-### 6. bert finetuning
-###########
-print("6. bert finetuning")
-
-sentiment_model.fit(train_x, train_y, epochs=16, shuffle=True, batch_size=8, validation_data=(test_x, test_y))
 
 
+#####################################
+# 6. BERT finetuning
+#####################################
+print("6. BERT finetuning")
+
+sentiment_model.fit(train_x, train_y, epochs=N_EPOCH, shuffle=True, batch_size=BATCH_SIZE,
+                    validation_data=(test_x, test_y))
 
 
-###########
-### 7. F1 score
-###########
-print("7. F1 score")
+
+#####################################
+# 7. Test data set F1-evaluate
+# - 예측 vs label 데이터에 대한 F1-score 평가
+#####################################
 
 def predict_convert_data(data_df):
     global tokenizer
@@ -434,25 +451,26 @@ def predict_load_data(pandas_dataframe):
     data_x = predict_convert_data(data_df)
     return data_x
 
+
 test_set = predict_load_data(test)
-print(test_set)
+# print(test_set)
 
 preds = sentiment_model.predict(test_set)
-print(preds)
+# print(preds)
 
-from sklearn.metrics import classification_report
 y_true = test['label']
-# F1 Score 확인
-print(classification_report(y_true, np.round(preds,0)))
 
-import logging
+# F1 Score 확인
+print(classification_report(y_true, np.round(preds, 0)))
+
+
 tf.get_logger().setLevel(logging.ERROR)
 
-###########
-### 8. TEST Practise
-###########
-print("8. TEST Practise")
 
+#####################################
+# 8. TEST Practise
+#####################################
+print("8. TEST Practise")
 
 def sentence_convert_data(data):
     global tokenizer
@@ -484,9 +502,5 @@ def movie_evaluation_predict(sentence):
     elif predict_answer == 1:
         print("(긍정 확률 : %.2f) 긍정적인 영화 평가입니다." % predict_value)
 
-###########
-###9. validation
-###########
-print("9. validation")
 
 movie_evaluation_predict("정말 많이 울었던 영화입니다.")
