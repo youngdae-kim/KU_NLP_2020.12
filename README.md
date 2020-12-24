@@ -38,5 +38,5 @@
 ## 참고자료
  1. 케라스 창시자에게 배우는 딥러닝 <br>
  2. 따라만 하면 구현 가능한 AI [공무원 AI]
- 3. gitgub - SKTBrain/KoBERT
- 4. gitgub -huggingface/transformers
+ 3. github - SKTBrain/KoBERT
+ 4. github -huggingface/transformers
